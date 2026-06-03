@@ -11,11 +11,33 @@ import { router } from './routes/index.js'
 
 export const app = express()
 
+const allowedOrigins = new Set([
+  env.CLIENT_URL,
+])
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true
+  if (allowedOrigins.has(origin)) return true
+
+  try {
+    const url = new URL(origin)
+    return env.NODE_ENV === 'development' && ['localhost', '127.0.0.1'].includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
 app.set('trust proxy', 1)
 app.use(helmet())
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(new Error('Not allowed by CORS'))
+    },
     credentials: true,
   }),
 )

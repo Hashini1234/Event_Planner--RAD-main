@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { Button } from '../components/ui/Button'
+import { login } from '../features/auth/authSlice'
+import { useAppDispatch } from '../hooks/redux'
 import { api } from '../services/api'
 
 const schema = z.object({
@@ -18,6 +20,7 @@ const schema = z.object({
 type RegisterValues = z.infer<typeof schema>
 
 export function RegisterPage() {
+  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const {
     register,
@@ -31,11 +34,14 @@ export function RegisterPage() {
   const onSubmit = async (values: RegisterValues) => {
     try {
       await api.post('/auth/register', values)
-      toast.success('Account created. Please verify your email.')
-      navigate('/login')
+      await dispatch(login({ email: values.email, password: values.password, role: values.role })).unwrap()
+      toast.success('Account created and signed in.')
+      navigate('/dashboard')
     } catch (error) {
       const message =
-        (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Registration failed'
+        (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message ??
+        (error as { message?: string }).message ??
+        'Registration failed'
       toast.error(message)
     }
   }

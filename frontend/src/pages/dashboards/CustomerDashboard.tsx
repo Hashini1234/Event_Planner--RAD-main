@@ -1,8 +1,48 @@
-import { CalendarDays, CreditCard, Sparkles, Users } from 'lucide-react'
+import { Bot, CalendarDays, CalendarPlus, CreditCard, HandCoins, Sparkles, Store, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { StatCard } from '../../components/ui/StatCard'
 import { bookings, events, expenseBreakdown, vendors } from '../../utils/mockData'
 import { formatLKR } from '../../utils/currency'
+
+const customerFeatures = [
+  {
+    title: 'Create Event',
+    description: 'Add event details, budget, venue and date.',
+    to: '/events/new',
+    icon: CalendarPlus,
+  },
+  {
+    title: 'Manage Budget',
+    description: 'Track expenses and category allocations.',
+    to: '/budget',
+    icon: CreditCard,
+  },
+  {
+    title: 'Book Vendors',
+    description: 'Browse verified vendors and compare packages.',
+    to: '/vendors',
+    icon: Store,
+  },
+  {
+    title: 'Manage Guests',
+    description: 'Handle RSVP, groups and check-in status.',
+    to: '/guests',
+    icon: Users,
+  },
+  {
+    title: 'Make Payments',
+    description: 'Review payment status and vendor deposits.',
+    to: '/payments',
+    icon: HandCoins,
+  },
+  {
+    title: 'Get AI Recommendations',
+    description: 'Generate smart planning ideas and checklists.',
+    to: '/ai-planner',
+    icon: Bot,
+  },
+]
 
 export function CustomerDashboard() {
   const event = events[0]
@@ -27,6 +67,35 @@ export function CustomerDashboard() {
         <StatCard label="Budget remaining" value={formatLKR(event.budget - spent)} trend="AI recommends keeping 12% contingency" icon={<CreditCard size={20} />} />
         <StatCard label="Guests invited" value={`${guestCount}`} trend="182 confirmed RSVPs" icon={<Users size={20} />} />
         <StatCard label="Smart actions" value="18" trend="6 high priority tasks this week" icon={<Sparkles size={20} />} />
+      </div>
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-bold">Customer features</h2>
+          <span className="text-sm font-medium text-charcoal-800/60 dark:text-ivory-100/60">Plan, book and pay from one workspace</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {customerFeatures.map((feature) => {
+            const Icon = feature.icon
+            return (
+              <Link
+                key={feature.title}
+                to={feature.to}
+                className="glass-panel group rounded-lg p-5 transition hover:-translate-y-0.5 hover:border-gold-300 hover:shadow-soft"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="grid size-12 place-items-center rounded-md bg-gold-100 text-gold-700 transition group-hover:bg-gold-700 group-hover:text-white dark:bg-gold-300/15 dark:text-gold-300">
+                    <Icon size={22} />
+                  </span>
+                  <span className="rounded-md border border-gold-100 px-2 py-1 text-xs font-semibold text-charcoal-800/60 dark:border-white/10 dark:text-ivory-100/60">
+                    Open
+                  </span>
+                </div>
+                <h3 className="mt-4 text-lg font-bold">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-charcoal-800/68 dark:text-ivory-100/68">{feature.description}</p>
+              </Link>
+            )
+          })}
+        </div>
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="glass-panel rounded-lg p-6">

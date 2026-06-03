@@ -15,6 +15,7 @@ import { GuestsPage } from './pages/GuestsPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { MarketplacePage } from './pages/MarketplacePage'
+import { PaymentsPage } from './pages/PaymentsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { useAppDispatch } from './hooks/redux'
 import { useAppSelector } from './hooks/redux'
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/events/new" element={<AddEventPage />} />
             <Route path="/guests" element={<GuestsPage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/ai-planner" element={<AiPlannerPage />} />
           </Route>
         </Route>

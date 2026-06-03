@@ -11,6 +11,7 @@ const links = [
   { to: '/events/new', label: 'Add Event' },
   { to: '/guests', label: 'Guests' },
   { to: '/budget', label: 'Budget' },
+  { to: '/payments', label: 'Payments' },
   { to: '/ai-planner', label: 'AI Planner' },
 ]
 

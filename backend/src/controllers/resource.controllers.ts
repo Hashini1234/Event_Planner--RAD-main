@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import type { Request, Response } from 'express'
+import mongoose from 'mongoose'
 import { AiRecommendationModel } from '../models/AiRecommendation.js'
 import { BookingModel } from '../models/Booking.js'
 import { BudgetModel } from '../models/Budget.js'
@@ -14,6 +15,11 @@ import { createNotification } from '../services/notification.service.js'
 import { createPaymentIntent } from '../services/payment.service.js'
 
 export async function listVendors(req: Request, res: Response) {
+  if (mongoose.connection.readyState !== 1) {
+    res.json({ success: true, data: { items: [], total: 0, page: Number(req.query.page ?? '1') } })
+    return
+  }
+
   const { q, category, city, page = '1', limit = '12' } = req.query
   const filter: Record<string, unknown> = { verified: true }
   if (category) filter.category = category
@@ -56,6 +62,11 @@ export async function createEvent(req: Request, res: Response) {
 }
 
 export async function listEvents(req: Request, res: Response) {
+  if (mongoose.connection.readyState !== 1) {
+    res.json({ success: true, data: { items: [], total: 0, page: Number(req.query.page ?? '1') } })
+    return
+  }
+
   const { search, eventType, status, page = '1', limit = '10' } = req.query
   const filter: Record<string, unknown> = req.user!.role === 'admin' ? {} : { createdBy: req.user!.id }
   if (eventType) filter.eventType = eventType
@@ -70,6 +81,11 @@ export async function listEvents(req: Request, res: Response) {
 }
 
 export async function listMyEvents(req: Request, res: Response) {
+  if (mongoose.connection.readyState !== 1) {
+    res.json({ success: true, data: [] })
+    return
+  }
+
   const events = await EventModel.find({ createdBy: req.user!.id }).populate('vendors').sort({ eventDate: 1 })
   res.json({ success: true, data: events })
 }

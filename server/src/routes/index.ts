@@ -23,6 +23,7 @@ import {
 } from '../controllers/resource.controllers.js'
 import { eventRules } from '../validators/event.validator.js'
 import { validateRequest } from '../middleware/validateRequest.js'
+import { asyncHandler } from '../middleware/asyncHandler.js'
 
 export const router = Router()
 
@@ -32,25 +33,25 @@ router.get('/health', (_req, res) => {
 
 router.use('/auth', authRouter)
 
-router.get('/vendors', listVendors)
-router.post('/vendors', authenticate, authorize('vendor', 'admin'), upload.array('images', 8), createVendor)
-router.patch('/vendors/:id/approve', authenticate, authorize('admin'), approveVendor)
+router.get('/vendors', asyncHandler(listVendors))
+router.post('/vendors', authenticate, authorize('vendor', 'admin'), upload.array('images', 8), asyncHandler(createVendor))
+router.patch('/vendors/:id/approve', authenticate, authorize('admin'), asyncHandler(approveVendor))
 
-router.get('/events', authenticate, listEvents)
-router.get('/events/user/my-events', authenticate, authorize('customer', 'admin'), listMyEvents)
-router.get('/events/:id', authenticate, getEvent)
-router.post('/events', authenticate, authorize('customer'), upload.single('eventImage'), eventRules, validateRequest, createEvent)
-router.put('/events/:id', authenticate, authorize('customer', 'admin'), upload.single('eventImage'), eventRules, validateRequest, updateEvent)
-router.delete('/events/:id', authenticate, authorize('customer', 'admin'), deleteEvent)
+router.get('/events', authenticate, asyncHandler(listEvents))
+router.get('/events/user/my-events', authenticate, authorize('customer', 'admin'), asyncHandler(listMyEvents))
+router.get('/events/:id', authenticate, asyncHandler(getEvent))
+router.post('/events', authenticate, authorize('customer'), upload.single('eventImage'), eventRules, validateRequest, asyncHandler(createEvent))
+router.put('/events/:id', authenticate, authorize('customer', 'admin'), upload.single('eventImage'), eventRules, validateRequest, asyncHandler(updateEvent))
+router.delete('/events/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteEvent))
 
-router.post('/budgets', authenticate, authorize('customer', 'admin'), upsertBudget)
+router.post('/budgets', authenticate, authorize('customer', 'admin'), asyncHandler(upsertBudget))
 
-router.post('/bookings', authenticate, authorize('customer', 'admin'), createBooking)
-router.patch('/bookings/:id/status', authenticate, authorize('vendor', 'admin'), updateBookingStatus)
+router.post('/bookings', authenticate, authorize('customer', 'admin'), asyncHandler(createBooking))
+router.patch('/bookings/:id/status', authenticate, authorize('vendor', 'admin'), asyncHandler(updateBookingStatus))
 
-router.post('/guests', authenticate, authorize('customer', 'admin'), createGuest)
-router.patch('/guests/check-in/:token', checkInGuest)
+router.post('/guests', authenticate, authorize('customer', 'admin'), asyncHandler(createGuest))
+router.patch('/guests/check-in/:token', asyncHandler(checkInGuest))
 
-router.post('/payments/intent', authenticate, authorize('customer', 'admin'), createPayment)
-router.post('/reviews', authenticate, authorize('customer'), createReview)
-router.post('/ai/recommendations', authenticate, aiRecommend)
+router.post('/payments/intent', authenticate, authorize('customer', 'admin'), asyncHandler(createPayment))
+router.post('/reviews', authenticate, authorize('customer'), asyncHandler(createReview))
+router.post('/ai/recommendations', authenticate, asyncHandler(aiRecommend))
