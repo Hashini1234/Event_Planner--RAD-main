@@ -46,4 +46,8 @@ textarea {
   .gold-text {
     @apply bg-gradient-to-r from-gold-700 via-gold-500 to-rose-500 bg-clip-text text-transparent;
   }
+
+  .field-dark {
+    @apply rounded-md border border-white/10 bg-charcoal-900 px-3 py-3 text-sm text-ivory-50 outline-none transition focus:border-gold-300;
+  }
 }

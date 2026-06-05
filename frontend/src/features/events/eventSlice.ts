@@ -16,6 +16,9 @@ const initialState: EventState = {
 
 export const loadEvents = createAsyncThunk('events/load', eventService.fetchEvents)
 export const addEvent = createAsyncThunk('events/add', eventService.createEvent)
+export const editEvent = createAsyncThunk('events/edit', async ({ id, formData }: { id: string; formData: FormData }) =>
+  eventService.updateEvent(id, formData),
+)
 export const removeEvent = createAsyncThunk('events/remove', eventService.deleteEvent)
 
 const eventSlice = createSlice({
@@ -38,6 +41,10 @@ const eventSlice = createSlice({
       })
       .addCase(addEvent.fulfilled, (state, action) => {
         state.items.unshift(action.payload)
+      })
+      .addCase(editEvent.fulfilled, (state, action) => {
+        const updatedId = action.payload._id ?? action.payload.id
+        state.items = state.items.map((event) => ((event._id ?? event.id) === updatedId ? action.payload : event))
       })
       .addCase(removeEvent.fulfilled, (state, action) => {
         state.items = state.items.filter((event) => (event._id ?? event.id) !== action.payload.id)

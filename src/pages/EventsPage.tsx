@@ -1,10 +1,10 @@
 import { CalendarPlus, Eye, Pencil, Search, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { StatCard } from '../components/ui/StatCard'
-import { loadEvents, removeEvent } from '../features/events/eventSlice'
+import { editEvent, loadEvents, removeEvent } from '../features/events/eventSlice'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import type { EventPlan } from '../types/domain'
 import { formatLKR } from '../utils/currency'
@@ -17,6 +17,7 @@ export function EventsPage() {
   const { items, loading } = useAppSelector((state) => state.events)
   const [search, setSearch] = useState('')
   const [eventType, setEventType] = useState('All')
+  const [editing, setEditing] = useState<EventPlan | null>(null)
 
   useEffect(() => {
     dispatch(loadEvents({ search: search || undefined, eventType: eventType === 'All' ? undefined : eventType }))
@@ -46,6 +47,25 @@ export function EventsPage() {
       toast.success('Event deleted')
     } catch {
       toast.error('Could not delete event. Demo records are read-only without the API.')
+    }
+  }
+
+  const handleEdit = async (submitEvent: FormEvent<HTMLFormElement>) => {
+    submitEvent.preventDefault()
+    if (!editing) return
+    const id = editing._id ?? editing.id
+    const form = new FormData(submitEvent.currentTarget)
+    const formData = new FormData()
+    ;['eventTitle', 'eventType', 'eventDate', 'startTime', 'endTime', 'venue', 'district', 'guestCount', 'budget', 'status', 'description', 'theme', 'notes'].forEach((key) => {
+      const value = form.get(key)
+      if (value !== null) formData.append(key, String(value))
+    })
+    try {
+      await dispatch(editEvent({ id, formData })).unwrap()
+      toast.success('Event updated')
+      setEditing(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update event')
     }
   }
 
@@ -126,7 +146,7 @@ export function EventsPage() {
                         <button aria-label="View event" className="grid size-9 place-items-center rounded-md hover:bg-ivory-100 dark:hover:bg-white/10">
                           <Eye size={16} />
                         </button>
-                        <button aria-label="Edit event" className="grid size-9 place-items-center rounded-md hover:bg-ivory-100 dark:hover:bg-white/10">
+                        <button aria-label="Edit event" className="grid size-9 place-items-center rounded-md hover:bg-ivory-100 dark:hover:bg-white/10" onClick={() => setEditing(event)}>
                           <Pencil size={16} />
                         </button>
                         <button
@@ -146,6 +166,34 @@ export function EventsPage() {
         </div>
         {loading && <p className="p-4 text-sm text-charcoal-800/60 dark:text-ivory-100/60">Loading latest events...</p>}
       </div>
+      {editing && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
+          <form onSubmit={handleEdit} className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-charcoal-900 p-6 text-ivory-50 shadow-luxury">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gold-300">Edit event</p>
+                <h2 className="font-display text-3xl font-bold">{editing.eventTitle}</h2>
+              </div>
+              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>Close</Button>
+            </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <input name="eventTitle" defaultValue={editing.eventTitle} className="field-dark" required />
+              <select name="eventType" defaultValue={editing.eventType} className="field-dark">{eventTypes.filter((type) => type !== 'All').map((type) => <option key={type}>{type}</option>)}</select>
+              <input name="eventDate" type="date" defaultValue={String(editing.eventDate).slice(0, 10)} className="field-dark" required />
+              <input name="venue" defaultValue={editing.venue} className="field-dark" required />
+              <input name="district" defaultValue={editing.district} className="field-dark" required />
+              <input name="guestCount" type="number" defaultValue={editing.guestCount} className="field-dark" />
+              <input name="budget" type="number" defaultValue={editing.budget} className="field-dark" />
+              <select name="status" defaultValue={editing.status} className="field-dark">
+                {['Planning', 'Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'].map((status) => <option key={status}>{status}</option>)}
+              </select>
+              <textarea name="description" defaultValue={editing.description} rows={3} className="field-dark md:col-span-2" />
+              <textarea name="notes" defaultValue={editing.notes} rows={3} className="field-dark md:col-span-2" />
+            </div>
+            <Button className="mt-5 w-full">Save event changes</Button>
+          </form>
+        </div>
+      )}
     </section>
   )
 }

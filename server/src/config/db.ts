@@ -9,7 +9,7 @@ export async function connectDatabase() {
     return false
   }
   mongoose.set('strictQuery', true)
-  await mongoose.connect(env.MONGODB_URI)
+  await mongoose.connect(env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 })
   console.log('MongoDB connected')
   return true
 }

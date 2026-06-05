@@ -50,15 +50,30 @@ export interface User {
 
 export interface Vendor {
   id: string
+  _id?: string
   name: string
+  vendorName?: string
+  businessName?: string
   category: string
   city: string
+  district?: string
+  description?: string
   rating: number
+  averageRating?: number
   reviews: number
+  reviewCount?: number
   startingPrice: number
+  pricing?: number
   verified: boolean
   image: string
+  images?: string[]
   tags: string[]
+  packages?: Array<{
+    title: string
+    description?: string
+    price: number
+    inclusions?: string[]
+  }>
 }
 
 export interface EventPlan {
@@ -90,19 +105,49 @@ export interface EventPlan {
 
 export interface Booking {
   id: string
+  _id?: string
+  event?: EventPlan
+  vendor?: Vendor
   eventTitle: string
   vendorName: string
   amount: number
-  status: 'pending' | 'accepted' | 'rejected' | 'paid' | 'completed'
+  status: 'pending' | 'accepted' | 'rejected' | 'paid' | 'completed' | 'cancelled' | 'refunded'
   date: string
+  packageTitle?: string
+  notes?: string
 }
 
 export interface Guest {
   id: string
+  _id?: string
+  event?: string
   name: string
   email: string
   phone: string
   group: string
+  plusOnes?: number
   rsvp: 'pending' | 'accepted' | 'declined'
   checkedIn: boolean
+}
+
+export interface BudgetItem {
+  id?: string
+  _id?: string
+  event: string
+  category: string
+  title: string
+  plannedAmount: number
+  actualAmount: number
+  notes?: string
+  paid?: boolean
+}
+
+export interface NotificationItem {
+  id?: string
+  _id?: string
+  title: string
+  message: string
+  type: 'booking' | 'payment' | 'vendor' | 'system' | 'rsvp'
+  readAt?: string
+  createdAt?: string
 }

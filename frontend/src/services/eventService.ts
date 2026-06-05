@@ -18,20 +18,37 @@ export async function fetchMyEvents() {
 }
 
 export async function createEvent(formData: FormData) {
-  const { data } = await api.post('/events', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return data.data as EventPlan
+  try {
+    const { data } = await api.post('/events', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data.data as EventPlan
+  } catch (error) {
+    throwApiError(error, 'Failed to create event')
+  }
 }
 
 export async function updateEvent(id: string, formData: FormData) {
-  const { data } = await api.put(`/events/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return data.data as EventPlan
+  try {
+    const { data } = await api.put(`/events/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data.data as EventPlan
+  } catch (error) {
+    throwApiError(error, 'Failed to update event')
+  }
 }
 
 export async function deleteEvent(id: string) {
-  const { data } = await api.delete(`/events/${id}`)
-  return data.data as { id: string }
+  try {
+    const { data } = await api.delete(`/events/${id}`)
+    return data.data as { id: string }
+  } catch (error) {
+    throwApiError(error, 'Failed to delete event')
+  }
+}
+
+function throwApiError(error: unknown, fallback: string): never {
+  const message = (error as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message
+  throw new Error(message ?? (error as { message?: string }).message ?? fallback)
 }

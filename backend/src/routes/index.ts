@@ -5,20 +5,33 @@ import { authRouter } from './auth.routes.js'
 import {
   aiRecommend,
   approveVendor,
+  cancelBooking,
   checkInGuest,
+  createBudgetItem,
   createBooking,
   createEvent,
   createGuest,
   createPayment,
   createReview,
   createVendor,
+  deleteBudgetItem,
   deleteEvent,
+  deleteGuest,
+  getVendor,
   getEvent,
+  listBudgetItems,
   listEvents,
   listMyEvents,
+  listGuests,
+  listMyBookings,
+  listNotifications,
   listVendors,
+  markNotificationRead,
+  recommendVendors,
   updateEvent,
+  updateBudgetItem,
   updateBookingStatus,
+  updateGuest,
   upsertBudget,
 } from '../controllers/resource.controllers.js'
 import { eventRules } from '../validators/event.validator.js'
@@ -34,6 +47,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRouter)
 
 router.get('/vendors', asyncHandler(listVendors))
+router.get('/vendors/:id', asyncHandler(getVendor))
 router.post('/vendors', authenticate, authorize('vendor', 'admin'), upload.array('images', 8), asyncHandler(createVendor))
 router.patch('/vendors/:id/approve', authenticate, authorize('admin'), asyncHandler(approveVendor))
 
@@ -45,13 +59,25 @@ router.put('/events/:id', authenticate, authorize('customer', 'admin'), upload.s
 router.delete('/events/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteEvent))
 
 router.post('/budgets', authenticate, authorize('customer', 'admin'), asyncHandler(upsertBudget))
+router.get('/budget-items', authenticate, authorize('customer', 'admin'), asyncHandler(listBudgetItems))
+router.post('/budget-items', authenticate, authorize('customer', 'admin'), asyncHandler(createBudgetItem))
+router.put('/budget-items/:id', authenticate, authorize('customer', 'admin'), asyncHandler(updateBudgetItem))
+router.delete('/budget-items/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteBudgetItem))
 
 router.post('/bookings', authenticate, authorize('customer', 'admin'), asyncHandler(createBooking))
+router.get('/bookings/my', authenticate, authorize('customer', 'admin'), asyncHandler(listMyBookings))
+router.patch('/bookings/:id/cancel', authenticate, authorize('customer', 'admin'), asyncHandler(cancelBooking))
 router.patch('/bookings/:id/status', authenticate, authorize('vendor', 'admin'), asyncHandler(updateBookingStatus))
 
+router.get('/guests', authenticate, authorize('customer', 'admin'), asyncHandler(listGuests))
 router.post('/guests', authenticate, authorize('customer', 'admin'), asyncHandler(createGuest))
+router.put('/guests/:id', authenticate, authorize('customer', 'admin'), asyncHandler(updateGuest))
+router.delete('/guests/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteGuest))
 router.patch('/guests/check-in/:token', asyncHandler(checkInGuest))
 
 router.post('/payments/intent', authenticate, authorize('customer', 'admin'), asyncHandler(createPayment))
 router.post('/reviews', authenticate, authorize('customer'), asyncHandler(createReview))
 router.post('/ai/recommendations', authenticate, asyncHandler(aiRecommend))
+router.post('/ai/vendor-recommendations', authenticate, authorize('customer', 'admin'), asyncHandler(recommendVendors))
+router.get('/notifications', authenticate, asyncHandler(listNotifications))
+router.patch('/notifications/:id/read', authenticate, asyncHandler(markNotificationRead))
