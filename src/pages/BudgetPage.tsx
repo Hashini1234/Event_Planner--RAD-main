@@ -11,7 +11,7 @@ export function BudgetPage() {
         <div className="glass-panel rounded-lg p-6">
           <h2 className="text-xl font-bold">Expense categories</h2>
           <div className="mt-4 h-96">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={384} minWidth={0}>
               <BarChart data={expenseBreakdown}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ead9b5" />
                 <XAxis dataKey="name" />

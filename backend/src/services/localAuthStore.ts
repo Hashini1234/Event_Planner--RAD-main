@@ -18,6 +18,36 @@ export interface LocalUser {
 const usersByEmail = new Map<string, LocalUser>()
 const usersById = new Map<string, LocalUser>()
 
+const demoUsers: Array<{
+  name: string
+  email: string
+  phone: string
+  password: string
+  role: Role
+}> = [
+  {
+    name: 'Demo Customer',
+    email: 'customer@celebratelk.demo',
+    phone: '0700000001',
+    password: 'password123',
+    role: 'customer',
+  },
+  {
+    name: 'Demo Vendor',
+    email: 'vendor@celebratelk.demo',
+    phone: '0700000002',
+    password: 'password123',
+    role: 'vendor',
+  },
+  {
+    name: 'Demo Admin',
+    email: 'admin@celebratelk.demo',
+    phone: '0700000003',
+    password: 'password123',
+    role: 'admin',
+  },
+]
+
 export function isLocalAuthEnabled() {
   return !process.env.MONGODB_URI
 }
@@ -63,4 +93,8 @@ export function setLocalRefreshTokenHash(id: string, refreshTokenHash: string) {
 
 export function compareLocalPassword(user: LocalUser, password: string) {
   return bcrypt.compare(password, user.passwordHash)
+}
+
+export async function seedLocalDemoUsers() {
+  await Promise.all(demoUsers.map((user) => createLocalUser(user)))
 }

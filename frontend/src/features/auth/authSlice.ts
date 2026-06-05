@@ -7,13 +7,17 @@ interface AuthState {
   token: string | null
   loading: boolean
   error: string | null
+  initialized: boolean
 }
 
+const storedToken = localStorage.getItem('celebratelk.accessToken')
+
 const initialState: AuthState = {
-  user: JSON.parse(localStorage.getItem('celebratelk.user') ?? 'null'),
-  token: localStorage.getItem('celebratelk.accessToken'),
+  user: null,
+  token: storedToken,
   loading: false,
   error: null,
+  initialized: !storedToken,
 }
 
 export const login = createAsyncThunk(
@@ -43,6 +47,7 @@ const authSlice = createSlice({
       state.user = null
       state.token = null
       state.error = null
+      state.initialized = true
       localStorage.removeItem('celebratelk.user')
       localStorage.removeItem('celebratelk.accessToken')
       void api.post('/auth/logout').catch(() => undefined)
@@ -59,20 +64,24 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.error = null
+        state.initialized = true
         localStorage.setItem('celebratelk.user', JSON.stringify(action.payload.user))
         localStorage.setItem('celebratelk.accessToken', action.payload.token)
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message ?? 'Login failed'
+        state.initialized = true
       })
       .addCase(loadCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload.user
+        state.initialized = true
         localStorage.setItem('celebratelk.user', JSON.stringify(action.payload.user))
       })
       .addCase(loadCurrentUser.rejected, (state) => {
         state.user = null
         state.token = null
+        state.initialized = true
         localStorage.removeItem('celebratelk.user')
         localStorage.removeItem('celebratelk.accessToken')
       })

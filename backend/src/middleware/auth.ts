@@ -37,6 +37,10 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     req.user = { id: user.id, role: user.role }
     next()
   } catch (error) {
+    if (error instanceof Error && ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) {
+      next(new AppError('Invalid or expired authentication token', 401))
+      return
+    }
     next(error)
   }
 }
