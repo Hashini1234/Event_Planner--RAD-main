@@ -12,6 +12,7 @@ import { AdminDashboard } from './pages/dashboards/AdminDashboard'
 import { VendorDashboard } from './pages/dashboards/VendorDashboard'
 import { EventsPage } from './pages/EventsPage'
 import { GuestsPage } from './pages/GuestsPage'
+import { InspirationGalleryPage } from './pages/InspirationGalleryPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { MarketplacePage } from './pages/MarketplacePage'
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/ai-planner" element={<AiPlannerPage />} />
+            <Route path="/gallery" element={<InspirationGalleryPage />} />
           </Route>
         </Route>
       </Routes>

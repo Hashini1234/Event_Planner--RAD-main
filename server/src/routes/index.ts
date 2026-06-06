@@ -38,6 +38,16 @@ import {
 import { eventRules } from '../validators/event.validator.js'
 import { validateRequest } from '../middleware/validateRequest.js'
 import { asyncHandler } from '../middleware/asyncHandler.js'
+import {
+  addGalleryComment,
+  createGalleryPost,
+  deleteGalleryComment,
+  deleteGalleryPost,
+  getGalleryPost,
+  listGalleryPosts,
+  toggleGalleryLike,
+  updateGalleryPost,
+} from '../controllers/gallery.controller.js'
 
 export const router = Router()
 
@@ -46,6 +56,15 @@ router.get('/health', (_req, res) => {
 })
 
 router.use('/auth', authRouter)
+
+router.get('/gallery', asyncHandler(listGalleryPosts))
+router.get('/gallery/:id', asyncHandler(getGalleryPost))
+router.post('/gallery', authenticate, authorize('customer'), upload.array('images', 8), asyncHandler(createGalleryPost))
+router.put('/gallery/:id', authenticate, authorize('customer', 'admin'), upload.array('images', 8), asyncHandler(updateGalleryPost))
+router.delete('/gallery/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteGalleryPost))
+router.post('/gallery/:id/like', authenticate, authorize('customer', 'admin'), asyncHandler(toggleGalleryLike))
+router.post('/gallery/:id/comments', authenticate, authorize('customer', 'admin'), asyncHandler(addGalleryComment))
+router.delete('/gallery/:id/comments/:commentId', authenticate, authorize('customer', 'admin'), asyncHandler(deleteGalleryComment))
 
 router.get('/vendors', asyncHandler(listVendors))
 router.get('/vendors/:id', asyncHandler(getVendor))

@@ -152,3 +152,35 @@ export interface NotificationItem {
   readAt?: string
   createdAt?: string
 }
+
+export interface GalleryImage {
+  url: string
+  publicId?: string
+}
+
+export interface GalleryComment {
+  _id?: string
+  id?: string
+  userId: string
+  userName: string
+  text: string
+  createdAt: string
+}
+
+export interface GalleryPost {
+  _id?: string
+  id?: string
+  customerId?: { _id?: string; id?: string; name?: string } | string
+  eventId: string
+  title: string
+  eventType: EventType
+  location: string
+  budgetRange: 'Under LKR 100,000' | 'LKR 100,000 - 500,000' | 'Above LKR 500,000'
+  description: string
+  images: GalleryImage[]
+  likes: string[]
+  comments: GalleryComment[]
+  status: 'active' | 'pending' | 'hidden'
+  createdAt?: string
+  updatedAt?: string
+}

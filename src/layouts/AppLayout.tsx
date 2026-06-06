@@ -2,6 +2,7 @@ import {
   Bell,
   Bot,
   CalendarDays,
+  Images,
   CircleHelp,
   CreditCard,
   LayoutDashboard,
@@ -31,6 +32,7 @@ const customerLinks = [
   { to: '/budget', label: 'Budget', icon: WalletCards },
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/ai-planner', label: 'AI Planner', icon: Bot },
+  { to: '/gallery', label: 'Inspiration Gallery', icon: Images },
 ]
 
 const vendorLinks = [
@@ -91,7 +93,7 @@ export function AppLayout() {
             <nav className="flex-1 px-6">
               <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-ivory-50/38">Main</p>
               <div className="space-y-2">
-                {links.slice(0, 6).map((link) => (
+                {links.map((link) => (
                   <SidebarLink key={link.to} {...link} />
                 ))}
               </div>

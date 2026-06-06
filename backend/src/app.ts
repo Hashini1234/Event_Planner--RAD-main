@@ -2,6 +2,7 @@ import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
+import path from 'path'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -54,6 +55,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 app.use(compression())
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 
 app.use('/api/v1', router)
 app.use(notFound)
