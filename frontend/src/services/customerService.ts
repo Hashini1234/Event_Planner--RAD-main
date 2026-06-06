@@ -50,6 +50,7 @@ export async function fetchBudget(event: string) {
     totalSpent: number
     remaining: number
     warning: string | null
+    categories: Array<{ category: string; amount: number }>
   }
 }
 

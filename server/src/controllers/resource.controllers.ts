@@ -91,7 +91,10 @@ export async function listEvents(req: Request, res: Response) {
   const filter: Record<string, unknown> = req.user!.role === 'admin' ? {} : { createdBy: req.user!.id }
   if (eventType) filter.eventType = eventType
   if (status) filter.status = status
-  if (search) filter.$text = { $search: String(search) }
+  if (search) {
+    const pattern = new RegExp(String(search).trim(), 'i')
+    filter.$or = [{ eventTitle: pattern }, { title: pattern }, { venue: pattern }, { district: pattern }]
+  }
   const skip = (Number(page) - 1) * Number(limit)
   const [items, total] = await Promise.all([
     EventModel.find(filter).populate('selectedVendors').skip(skip).limit(Number(limit)).sort({ eventDate: 1 }),
@@ -305,30 +308,27 @@ export async function aiRecommend(req: Request, res: Response) {
 
 export async function listBudgetItems(req: Request, res: Response) {
   if (!isDatabaseConnected()) {
-    res.json({ success: true, data: { items: [], totalSpent: 0, remaining: 0, budget: 0, warning: null } })
+    res.json({ success: true, data: emptyBudgetSummary() })
     return
   }
-  await assertOwnEvent(String(req.query.event), req.user!.id, req.user!.role)
-  const items = await BudgetModel.find({ event: req.query.event }).populate('vendor', 'vendorName businessName category')
-  const event = await EventModel.findById(req.query.event)
-  const totalSpent = items.reduce((sum, item) => sum + Number(item.actualAmount || item.plannedAmount || 0), 0)
-  const remaining = Number(event?.budget ?? 0) - totalSpent
-  res.json({
-    success: true,
-    data: {
-      items,
-      totalSpent,
-      remaining,
-      budget: Number(event?.budget ?? 0),
-      warning: remaining < 0 ? 'Budget exceeded' : remaining <= Number(event?.budget ?? 0) * 0.1 ? 'Budget almost exhausted' : null,
-    },
-  })
+  const summary = await buildBudgetSummary(String(req.query.event), req.user!.id, req.user!.role)
+  res.json({ success: true, data: summary })
+}
+
+export async function listBudgetSummary(req: Request, res: Response) {
+  if (!isDatabaseConnected()) {
+    res.json({ success: true, data: emptyBudgetSummary() })
+    return
+  }
+  const summary = await buildBudgetSummary(String(req.query.event), req.user!.id, req.user!.role)
+  res.json({ success: true, data: summary })
 }
 
 export async function createBudgetItem(req: Request, res: Response) {
   if (!isDatabaseConnected()) throw new AppError('MongoDB is required to manage budget items', 503)
   await assertOwnEvent(req.body.event, req.user!.id, req.user!.role)
-  const item = await BudgetModel.create(req.body)
+  const payload = buildBudgetPayload(req.body, req.user!.id)
+  const item = await BudgetModel.create(payload)
   res.status(201).json({ success: true, data: item })
 }
 
@@ -337,7 +337,10 @@ export async function updateBudgetItem(req: Request, res: Response) {
   const item = await BudgetModel.findById(req.params.id)
   if (!item) throw new AppError('Expense not found', 404)
   await assertOwnEvent(String(item.event), req.user!.id, req.user!.role)
-  Object.assign(item, req.body)
+  if (req.user!.role !== 'admin' && String(item.customer) !== req.user!.id) {
+    throw new AppError('You can only update your own expenses', 403)
+  }
+  Object.assign(item, buildBudgetPayload({ ...req.body, event: item.event }, req.user!.id, item))
   await item.save()
   res.json({ success: true, data: item })
 }
@@ -347,6 +350,9 @@ export async function deleteBudgetItem(req: Request, res: Response) {
   const item = await BudgetModel.findById(req.params.id)
   if (!item) throw new AppError('Expense not found', 404)
   await assertOwnEvent(String(item.event), req.user!.id, req.user!.role)
+  if (req.user!.role !== 'admin' && String(item.customer) !== req.user!.id) {
+    throw new AppError('You can only delete your own expenses', 403)
+  }
   await item.deleteOne()
   res.json({ success: true, data: { id: req.params.id } })
 }
@@ -419,6 +425,67 @@ async function assertOwnEvent(eventId: string, userId: string, role: string) {
     throw new AppError('You can only manage your own event records', 403)
   }
   return event
+}
+
+async function buildBudgetSummary(eventId: string, userId: string, role: string) {
+  const event = await assertOwnEvent(eventId, userId, role)
+  const filter = role === 'admin' ? { event: event.id } : { event: event.id, customer: userId }
+  const items = await BudgetModel.find(filter).populate('vendor', 'vendorName businessName category').sort({ createdAt: -1 })
+  const totalSpent = items.reduce((sum, item) => sum + getBudgetAmount(item), 0)
+  const budget = Number(event.budget ?? 0)
+  const remaining = budget - totalSpent
+  const categories = items.reduce<Record<string, number>>((acc, item) => {
+    const category = String(item.category || 'Other')
+    acc[category] = (acc[category] ?? 0) + getBudgetAmount(item)
+    return acc
+  }, {})
+  const warning =
+    totalSpent > budget
+      ? `Budget exceeded by LKR ${Math.abs(remaining).toLocaleString('en-LK')}`
+      : remaining <= budget * 0.1 && items.length > 0
+        ? 'Warning: Your remaining budget is low'
+        : null
+
+  return {
+    items,
+    budget,
+    totalSpent,
+    remaining,
+    warning,
+    categories: Object.entries(categories).map(([category, amount]) => ({ category, amount })),
+  }
+}
+
+function emptyBudgetSummary() {
+  return { items: [], budget: 0, totalSpent: 0, remaining: 0, warning: null, categories: [] }
+}
+
+function buildBudgetPayload(body: Record<string, unknown>, userId: string, existing?: any) {
+  const title = getString(body.title, existing?.title)
+  const category = getString(body.category, existing?.category) || 'Other'
+  const event = body.event ?? existing?.event
+  const amount = Number(body.amount ?? body.actualAmount ?? body.plannedAmount ?? existing?.amount ?? existing?.actualAmount ?? 0)
+
+  if (!event) throw new AppError('Event is required', 400)
+  if (!title) throw new AppError('Expense title is required', 400)
+  if (!Number.isFinite(amount) || amount <= 0) throw new AppError('Expense amount must be greater than 0', 400)
+
+  return {
+    event,
+    customer: existing?.customer ?? userId,
+    category,
+    title,
+    amount,
+    plannedAmount: amount,
+    actualAmount: amount,
+    notes: getString(body.notes, existing?.notes),
+    paid: Boolean(body.paid ?? existing?.paid ?? false),
+    vendor: body.vendor ?? existing?.vendor,
+  }
+}
+
+function getBudgetAmount(item: { amount?: unknown; actualAmount?: unknown; plannedAmount?: unknown }) {
+  return Number(item.amount ?? item.actualAmount ?? item.plannedAmount ?? 0)
 }
 
 function buildEventPayload(req: Request, userId: string, existing?: any) {

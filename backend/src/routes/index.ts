@@ -20,6 +20,7 @@ import {
   getVendor,
   getEvent,
   listBudgetItems,
+  listBudgetSummary,
   listEvents,
   listMyEvents,
   listGuests,
@@ -60,6 +61,7 @@ router.delete('/events/:id', authenticate, authorize('customer', 'admin'), async
 
 router.post('/budgets', authenticate, authorize('customer', 'admin'), asyncHandler(upsertBudget))
 router.get('/budget-items', authenticate, authorize('customer', 'admin'), asyncHandler(listBudgetItems))
+router.get('/budget-items/summary', authenticate, authorize('customer', 'admin'), asyncHandler(listBudgetSummary))
 router.post('/budget-items', authenticate, authorize('customer', 'admin'), asyncHandler(createBudgetItem))
 router.put('/budget-items/:id', authenticate, authorize('customer', 'admin'), asyncHandler(updateBudgetItem))
 router.delete('/budget-items/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteBudgetItem))

@@ -136,6 +136,7 @@ export interface BudgetItem {
   event: string
   category: string
   title: string
+  amount: number
   plannedAmount: number
   actualAmount: number
   notes?: string
