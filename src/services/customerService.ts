@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Booking, BudgetItem, EventPlan, Guest, NotificationItem, Vendor } from '../types/domain'
+import type { Booking, BudgetItem, EventPlan, Guest, NotificationItem, Review, Vendor } from '../types/domain'
 
 export interface VendorFilters {
   q?: string
@@ -22,11 +22,17 @@ export async function fetchVendor(id: string) {
 
 export async function bookVendor(payload: {
   event: string
+  eventId?: string
   vendor: string
+  vendorId?: string
+  packageId?: string
   packageTitle?: string
+  packageName?: string
   amount?: number
+  packagePrice?: number
   date?: string
   notes?: string
+  customerNote?: string
 }) {
   const { data } = await api.post('/bookings', payload)
   return data.data as Booking
@@ -40,6 +46,16 @@ export async function fetchMyBookings() {
 export async function cancelBooking(id: string) {
   const { data } = await api.patch(`/bookings/${id}/cancel`)
   return data.data as Booking
+}
+
+export async function fetchVendorReviews(vendorId: string) {
+  const { data } = await api.get(`/reviews/vendor/${vendorId}`)
+  return data.data as Review[]
+}
+
+export async function createVendorReview(payload: { bookingId: string; rating: number; comment: string }) {
+  const { data } = await api.post('/reviews', payload)
+  return data.data as Review
 }
 
 export async function fetchBudget(event: string) {

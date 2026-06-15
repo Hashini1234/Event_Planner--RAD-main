@@ -53,6 +53,7 @@ export default function App() {
             <Route path="/events/new" element={<AddEventPage />} />
             <Route path="/guests" element={<GuestsPage />} />
             <Route path="/budget" element={<BudgetPage />} />
+            <Route path="/bookings" element={<PaymentsPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/ai-planner" element={<AiPlannerPage />} />
             <Route path="/gallery" element={<InspirationGalleryPage />} />

@@ -68,7 +68,10 @@ export interface Vendor {
   image: string
   images?: string[]
   tags: string[]
+  availability?: string[]
   packages?: Array<{
+    _id?: string
+    id?: string
     title: string
     description?: string
     price: number
@@ -107,14 +110,36 @@ export interface Booking {
   id: string
   _id?: string
   event?: EventPlan
+  eventId?: EventPlan | string
   vendor?: Vendor
+  vendorId?: Vendor | string
+  customerId?: string
+  packageId?: string
   eventTitle: string
   vendorName: string
   amount: number
+  packagePrice?: number
   status: 'pending' | 'accepted' | 'rejected' | 'paid' | 'completed' | 'cancelled' | 'refunded'
   date: string
+  eventDate?: string
   packageTitle?: string
+  packageName?: string
   notes?: string
+  customerNote?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface Review {
+  id?: string
+  _id?: string
+  vendor: string
+  customer?: { id?: string; _id?: string; name?: string } | string
+  booking?: string
+  rating: number
+  comment?: string
+  status?: 'published' | 'flagged' | 'hidden'
+  createdAt?: string
 }
 
 export interface Guest {

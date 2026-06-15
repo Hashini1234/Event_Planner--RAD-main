@@ -26,6 +26,7 @@ import {
   listGuests,
   listMyBookings,
   listNotifications,
+  listVendorReviews,
   listVendors,
   markNotificationRead,
   recommendVendors,
@@ -68,6 +69,7 @@ router.delete('/gallery/:id/comments/:commentId', authenticate, authorize('custo
 
 router.get('/vendors', asyncHandler(listVendors))
 router.get('/vendors/:id', asyncHandler(getVendor))
+router.get('/vendors/:id/reviews', asyncHandler(listVendorReviews))
 router.post('/vendors', authenticate, authorize('vendor', 'admin'), upload.array('images', 8), asyncHandler(createVendor))
 router.patch('/vendors/:id/approve', authenticate, authorize('admin'), asyncHandler(approveVendor))
 
@@ -98,6 +100,7 @@ router.patch('/guests/check-in/:token', asyncHandler(checkInGuest))
 
 router.post('/payments/intent', authenticate, authorize('customer', 'admin'), asyncHandler(createPayment))
 router.post('/reviews', authenticate, authorize('customer'), asyncHandler(createReview))
+router.get('/reviews/vendor/:vendorId', asyncHandler(listVendorReviews))
 router.post('/ai/recommendations', authenticate, asyncHandler(aiRecommend))
 router.post('/ai/vendor-recommendations', authenticate, authorize('customer', 'admin'), asyncHandler(recommendVendors))
 router.get('/notifications', authenticate, asyncHandler(listNotifications))

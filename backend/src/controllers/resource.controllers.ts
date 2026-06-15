@@ -52,7 +52,12 @@ export async function listVendors(req: Request, res: Response) {
 }
 
 export async function getVendor(req: Request, res: Response) {
-  const vendor = await VendorModel.findById(req.params.id).populate('reviews')
+  const vendor = await VendorModel.findById(req.params.id).populate({
+    path: 'reviews',
+    match: { status: 'published' },
+    populate: { path: 'customer', select: 'name' },
+    options: { sort: { createdAt: -1 }, limit: 12 },
+  })
   if (!vendor || !vendor.verified) throw new AppError('Vendor not found', 404)
   res.json({ success: true, data: vendor })
 }
@@ -156,35 +161,62 @@ export async function upsertBudget(req: Request, res: Response) {
 
 export async function createBooking(req: Request, res: Response) {
   if (!isDatabaseConnected()) throw new AppError('MongoDB is required to create bookings', 503)
-  const event = await EventModel.findById(req.body.event)
+  const event = await EventModel.findById(req.body.event ?? req.body.eventId)
   if (!event) throw new AppError('Event not found', 404)
   if (String(event.createdBy) !== req.user!.id && req.user!.role !== 'admin') {
     throw new AppError('You can only book vendors for your own events', 403)
   }
 
-  const vendor = await VendorModel.findById(req.body.vendor)
+  const vendor = await VendorModel.findById(req.body.vendor ?? req.body.vendorId)
   if (!vendor || !vendor.verified) throw new AppError('Vendor not found', 404)
 
-  const bookingDate = new Date(req.body.date ?? event.eventDate)
+  const activeDuplicate = await BookingModel.findOne({
+    customer: req.user!.id,
+    vendor: vendor.id,
+    event: event.id,
+    status: { $in: ['pending', 'accepted', 'paid', 'completed'] },
+  })
+  if (activeDuplicate) throw new AppError('You have already requested this vendor for this event.', 409)
+
+  const bookingDate = new Date(req.body.date ?? (event as any).eventDate)
+  if (Number.isNaN(bookingDate.getTime())) throw new AppError('A valid event date is required', 400)
   const bookingDateKey = bookingDate.toISOString().slice(0, 10)
-  const duplicate = await BookingModel.findOne({
+  const listedAvailability = (vendor.availability ?? []).map((date) => new Date(date as string | number | Date).toISOString().slice(0, 10))
+  if (listedAvailability.length > 0 && !listedAvailability.includes(bookingDateKey)) {
+    throw new AppError('Vendor is unavailable for this date.', 409)
+  }
+  const dateConflict = await BookingModel.findOne({
     vendor: vendor.id,
     bookingDateKey,
     status: { $in: ['pending', 'accepted', 'paid', 'completed'] },
   })
-  if (duplicate) throw new AppError('This vendor already has an active booking on this date', 409)
+  if (dateConflict) throw new AppError('Vendor is unavailable for this date.', 409)
 
-  const packageTitle = req.body.packageTitle ?? vendor.packages?.[0]?.title ?? 'Standard package'
-  const amount = Number(req.body.amount ?? vendor.packages?.[0]?.price ?? vendor.pricing ?? 0)
+  const requestedPackage = String(req.body.packageId ?? req.body.packageTitle ?? req.body.packageName ?? '')
+  const selectedPackage = vendor.packages?.find((item: any) => String(item._id ?? item.title) === requestedPackage)
+    ?? vendor.packages?.find((item) => item.title === req.body.packageTitle || item.title === req.body.packageName)
+    ?? vendor.packages?.[0]
+  const packageTitle = req.body.packageTitle ?? req.body.packageName ?? selectedPackage?.title ?? 'Standard package'
+  const amount = Number(req.body.amount ?? req.body.packagePrice ?? selectedPackage?.price ?? vendor.pricing ?? 0)
+  if (amount < 0 || Number.isNaN(amount)) throw new AppError('A valid package price is required', 400)
   const booking = await BookingModel.create({
     event: event.id,
+    eventId: event.id,
     customer: req.user!.id,
+    customerId: req.user!.id,
     vendor: vendor.id,
+    vendorId: vendor.id,
+    packageId: req.body.packageId,
     packageTitle,
+    packageName: packageTitle,
     amount,
+    packagePrice: amount,
     date: bookingDate,
-    notes: req.body.notes,
+    eventDate: bookingDate,
+    notes: req.body.notes ?? req.body.customerNote,
+    customerNote: req.body.customerNote ?? req.body.notes,
   })
+  await EventModel.findByIdAndUpdate(event.id, { $addToSet: { selectedVendors: vendor.id } })
   await createNotification({
     user: req.user!.id,
     title: 'Booking request sent',
@@ -201,8 +233,8 @@ export async function listMyBookings(req: Request, res: Response) {
     return
   }
   const bookings = await BookingModel.find({ customer: req.user!.id })
-    .populate('event', 'eventTitle eventDate venue district budget')
-    .populate('vendor', 'vendorName businessName category city district pricing averageRating images')
+    .populate('event eventId', 'eventTitle eventDate venue district budget status')
+    .populate('vendor vendorId', 'vendorName businessName category city district pricing averageRating reviewCount images packages')
     .sort({ createdAt: -1 })
   res.json({ success: true, data: bookings })
 }
@@ -289,8 +321,35 @@ export async function createPayment(req: Request, res: Response) {
 }
 
 export async function createReview(req: Request, res: Response) {
-  const review = await ReviewModel.create({ ...req.body, customer: req.user!.id })
+  if (!isDatabaseConnected()) throw new AppError('MongoDB is required to create reviews', 503)
+  const booking = await BookingModel.findOne({
+    _id: req.body.booking ?? req.body.bookingId,
+    customer: req.user!.id,
+    status: 'completed',
+  })
+  if (!booking) throw new AppError('Reviews can only be posted after a completed booking', 400)
+  const rating = Number(req.body.rating)
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new AppError('Rating must be between 1 and 5', 400)
+  const review = await ReviewModel.create({
+    vendor: booking.vendor,
+    customer: req.user!.id,
+    booking: booking.id,
+    rating,
+    comment: String(req.body.comment ?? '').trim(),
+  })
+  await refreshVendorRating(String(booking.vendor))
   res.status(201).json({ success: true, data: review })
+}
+
+export async function listVendorReviews(req: Request, res: Response) {
+  if (!isDatabaseConnected()) {
+    res.json({ success: true, data: [] })
+    return
+  }
+  const reviews = await ReviewModel.find({ vendor: req.params.vendorId, status: 'published' })
+    .populate('customer', 'name')
+    .sort({ createdAt: -1 })
+  res.json({ success: true, data: reviews })
 }
 
 export async function aiRecommend(req: Request, res: Response) {
@@ -454,6 +513,15 @@ async function buildBudgetSummary(eventId: string, userId: string, role: string)
     warning,
     categories: Object.entries(categories).map(([category, amount]) => ({ category, amount })),
   }
+}
+
+async function refreshVendorRating(vendorId: string) {
+  const reviews = await ReviewModel.find({ vendor: vendorId, status: 'published' })
+  const reviewCount = reviews.length
+  const averageRating = reviewCount
+    ? Math.round((reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviewCount) * 10) / 10
+    : 0
+  await VendorModel.findByIdAndUpdate(vendorId, { averageRating, ratings: averageRating, reviewCount })
 }
 
 function emptyBudgetSummary() {
