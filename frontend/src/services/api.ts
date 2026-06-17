@@ -19,6 +19,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('celebratelk.accessToken')
       localStorage.removeItem('celebratelk.user')
+      window.dispatchEvent(new Event('celebratelk:session-expired'))
     }
     return Promise.reject(error)
   },

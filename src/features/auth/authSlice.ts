@@ -52,6 +52,14 @@ const authSlice = createSlice({
       localStorage.removeItem('celebratelk.accessToken')
       void api.post('/auth/logout').catch(() => undefined)
     },
+    sessionExpired(state) {
+      state.user = null
+      state.token = null
+      state.error = 'Session expired. Please log in again.'
+      state.initialized = true
+      localStorage.removeItem('celebratelk.user')
+      localStorage.removeItem('celebratelk.accessToken')
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -88,5 +96,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { logout } = authSlice.actions
+export const { logout, sessionExpired } = authSlice.actions
 export default authSlice.reducer

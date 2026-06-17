@@ -5,6 +5,7 @@ import { AiRecommendationModel } from '../models/AiRecommendation.js'
 import { BookingModel } from '../models/Booking.js'
 import { BudgetModel } from '../models/Budget.js'
 import { EventModel } from '../models/Event.js'
+import { EventPackageModel } from '../models/EventPackage.js'
 import { GuestModel } from '../models/Guest.js'
 import { NotificationModel } from '../models/Notification.js'
 import { PaymentModel } from '../models/Payment.js'
@@ -77,6 +78,60 @@ export async function approveVendor(req: Request, res: Response) {
   res.json({ success: true, data: vendor })
 }
 
+export async function updateVendor(req: Request, res: Response) {
+  const vendor = await VendorModel.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+  if (!vendor) throw new AppError('Vendor not found', 404)
+  res.json({ success: true, data: vendor })
+}
+
+export async function deleteVendor(req: Request, res: Response) {
+  const vendor = await VendorModel.findByIdAndDelete(req.params.id)
+  if (!vendor) throw new AppError('Vendor not found', 404)
+  res.json({ success: true, data: { id: req.params.id } })
+}
+
+export async function listEventPackages(req: Request, res: Response) {
+  if (!isDatabaseConnected()) {
+    res.json({ success: true, data: [] })
+    return
+  }
+  const filter: Record<string, unknown> = req.user?.role === 'admin' ? {} : { active: true }
+  if (req.query.category) filter.category = req.query.category
+  const packages = await EventPackageModel.find(filter).sort({ createdAt: -1 })
+  res.json({ success: true, data: packages })
+}
+
+export async function getEventPackage(req: Request, res: Response) {
+  const eventPackage = await EventPackageModel.findById(req.params.id)
+  if (!eventPackage || (!eventPackage.active && req.user?.role !== 'admin')) throw new AppError('Event package not found', 404)
+  res.json({ success: true, data: eventPackage })
+}
+
+export async function createEventPackage(req: Request, res: Response) {
+  if (!isDatabaseConnected()) throw new AppError('MongoDB is required to create event packages', 503)
+  const eventPackage = await EventPackageModel.create({
+    ...req.body,
+    createdBy: req.user!.id,
+    inclusions: normalizeList(req.body.inclusions),
+  })
+  res.status(201).json({ success: true, data: eventPackage })
+}
+
+export async function updateEventPackage(req: Request, res: Response) {
+  if (!isDatabaseConnected()) throw new AppError('MongoDB is required to update event packages', 503)
+  const payload = { ...req.body, inclusions: normalizeList(req.body.inclusions) }
+  const eventPackage = await EventPackageModel.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true })
+  if (!eventPackage) throw new AppError('Event package not found', 404)
+  res.json({ success: true, data: eventPackage })
+}
+
+export async function deleteEventPackage(req: Request, res: Response) {
+  if (!isDatabaseConnected()) throw new AppError('MongoDB is required to delete event packages', 503)
+  const eventPackage = await EventPackageModel.findByIdAndDelete(req.params.id)
+  if (!eventPackage) throw new AppError('Event package not found', 404)
+  res.json({ success: true, data: { id: req.params.id } })
+}
+
 export async function createEvent(req: Request, res: Response) {
   if (!isDatabaseConnected()) {
     throw new AppError('MongoDB is not connected. Set MONGODB_URI in backend/.env and restart the API to create events.', 503)
@@ -87,13 +142,17 @@ export async function createEvent(req: Request, res: Response) {
 }
 
 export async function listEvents(req: Request, res: Response) {
+  if (req.user!.role !== 'admin') {
+    throw new AppError('Only admins can view all events', 403)
+  }
+
   if (mongoose.connection.readyState !== 1) {
     res.json({ success: true, data: { items: [], total: 0, page: Number(req.query.page ?? '1') } })
     return
   }
 
   const { search, eventType, status, page = '1', limit = '10' } = req.query
-  const filter: Record<string, unknown> = req.user!.role === 'admin' ? {} : { createdBy: req.user!.id }
+  const filter: Record<string, unknown> = {}
   if (eventType) filter.eventType = eventType
   if (status) filter.status = status
   if (search) {
@@ -235,6 +294,19 @@ export async function listMyBookings(req: Request, res: Response) {
   const bookings = await BookingModel.find({ customer: req.user!.id })
     .populate('event eventId', 'eventTitle eventDate venue district budget status')
     .populate('vendor vendorId', 'vendorName businessName category city district pricing averageRating reviewCount images packages')
+    .sort({ createdAt: -1 })
+  res.json({ success: true, data: bookings })
+}
+
+export async function listBookings(req: Request, res: Response) {
+  if (!isDatabaseConnected()) {
+    res.json({ success: true, data: [] })
+    return
+  }
+  const bookings = await BookingModel.find()
+    .populate('event eventId', 'eventTitle eventDate venue district budget status')
+    .populate('vendor vendorId', 'vendorName businessName category city district pricing averageRating reviewCount images packages')
+    .populate('customer customerId', 'name email')
     .sort({ createdAt: -1 })
   res.json({ success: true, data: bookings })
 }
@@ -607,6 +679,12 @@ function buildEventPayload(req: Request, userId: string, existing?: any) {
 function getString(value: unknown, fallback?: unknown) {
   const selected = value ?? fallback
   return typeof selected === 'string' ? selected.trim() : selected == null ? undefined : String(selected)
+}
+
+function normalizeList(value: unknown) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
+  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean)
+  return []
 }
 
 function parseEventDate(value: unknown) {

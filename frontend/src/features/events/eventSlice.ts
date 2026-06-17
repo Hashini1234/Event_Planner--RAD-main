@@ -15,6 +15,7 @@ const initialState: EventState = {
 }
 
 export const loadEvents = createAsyncThunk('events/load', eventService.fetchEvents)
+export const loadMyEvents = createAsyncThunk('events/loadMyEvents', eventService.fetchMyEvents)
 export const addEvent = createAsyncThunk('events/add', eventService.createEvent)
 export const editEvent = createAsyncThunk('events/edit', async ({ id, formData }: { id: string; formData: FormData }) =>
   eventService.updateEvent(id, formData),
@@ -38,6 +39,18 @@ const eventSlice = createSlice({
       .addCase(loadEvents.rejected, (state, action) => {
         state.loading = false
         state.error = action.error.message ?? 'Failed to load events'
+      })
+      .addCase(loadMyEvents.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(loadMyEvents.fulfilled, (state, action) => {
+        state.loading = false
+        state.items = action.payload
+      })
+      .addCase(loadMyEvents.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.error.message ?? 'Failed to load your events'
       })
       .addCase(addEvent.fulfilled, (state, action) => {
         state.items.unshift(action.payload)

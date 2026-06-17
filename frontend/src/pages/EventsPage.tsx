@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { StatCard } from '../components/ui/StatCard'
-import { editEvent, loadEvents, removeEvent } from '../features/events/eventSlice'
+import { editEvent, loadEvents, loadMyEvents, removeEvent } from '../features/events/eventSlice'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { fetchMyBookings } from '../services/customerService'
 import type { EventPlan } from '../types/domain'
@@ -16,6 +16,7 @@ const statuses = ['All', 'Planning', 'Confirmed', 'Completed', 'Cancelled']
 export function EventsPage() {
   const dispatch = useAppDispatch()
   const { items, loading } = useAppSelector((state) => state.events)
+  const role = useAppSelector((state) => state.auth.user?.role)
   const [search, setSearch] = useState('')
   const [eventType, setEventType] = useState('All')
   const [status, setStatus] = useState('All')
@@ -25,6 +26,10 @@ export function EventsPage() {
   const [vendorRequests, setVendorRequests] = useState(0)
 
   useEffect(() => {
+    if (role === 'customer' || !role) {
+      dispatch(loadMyEvents())
+      return
+    }
     dispatch(
       loadEvents({
         search: search || undefined,
@@ -32,7 +37,7 @@ export function EventsPage() {
         status: status === 'All' ? undefined : status,
       }),
     )
-  }, [dispatch, eventType, search, status])
+  }, [dispatch, eventType, role, search, status])
 
   useEffect(() => {
     const loadBookings = async () => {

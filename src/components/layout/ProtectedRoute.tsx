@@ -1,8 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAppSelector } from '../../hooks/redux'
 import type { Role } from '../../types/domain'
 
 export function ProtectedRoute({ roles }: { roles?: Role[] }) {
+  const location = useLocation()
   const { initialized, user } = useAppSelector((state) => state.auth)
 
   if (!initialized) {
@@ -12,7 +13,7 @@ export function ProtectedRoute({ roles }: { roles?: Role[] }) {
       </div>
     )
   }
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
 
   return <Outlet />

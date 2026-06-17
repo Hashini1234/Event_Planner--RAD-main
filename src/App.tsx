@@ -2,7 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
-import { loadCurrentUser } from './features/auth/authSlice'
+import { loadCurrentUser, sessionExpired } from './features/auth/authSlice'
 import { AppLayout } from './layouts/AppLayout'
 import { AddEventPage } from './pages/AddEventPage'
 import { AiPlannerPage } from './pages/AiPlannerPage'
@@ -37,6 +37,14 @@ export default function App() {
       void dispatch(loadCurrentUser())
     }
   }, [dispatch, token])
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      dispatch(sessionExpired())
+    }
+    window.addEventListener('celebratelk:session-expired', handleSessionExpired)
+    return () => window.removeEventListener('celebratelk:session-expired', handleSessionExpired)
+  }, [dispatch])
 
   return (
     <>

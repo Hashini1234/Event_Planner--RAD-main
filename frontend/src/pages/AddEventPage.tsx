@@ -9,10 +9,20 @@ import { z } from 'zod'
 import { Button } from '../components/ui/Button'
 import { addEvent } from '../features/events/eventSlice'
 import { useAppDispatch } from '../hooks/redux'
-import { sriLankaDistricts } from '../types/domain'
+import { sriLankaDistricts, type EventPackage, type EventType } from '../types/domain'
 
 const eventTypes = ['Wedding', 'Birthday', 'Engagement', 'Corporate', 'Anniversary', 'Party', 'Other'] as const
 const statuses = ['Planning', 'Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'] as const
+
+const packageTypeMap: Partial<Record<EventPackage['category'], EventType>> = {
+  Birthday: 'Birthday',
+  Wedding: 'Wedding',
+  'Baby Shower': 'Other',
+  Festival: 'Party',
+  Meetings: 'Corporate',
+  'House Warming': 'Other',
+  Other: 'Other',
+}
 
 const schema = z.object({
   eventTitle: z.string().min(3, 'Event title must be at least 3 characters'),
@@ -36,6 +46,15 @@ type EventFormValues = z.output<typeof schema>
 export function AddEventPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const selectedPackage = useMemo(() => {
+    const raw = sessionStorage.getItem('celebratelk.selectedPackage')
+    if (!raw) return null
+    try {
+      return JSON.parse(raw) as EventPackage
+    } catch {
+      return null
+    }
+  }, [])
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const {
@@ -45,11 +64,18 @@ export function AddEventPage() {
   } = useForm<EventFormInput, unknown, EventFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      eventType: 'Wedding',
-      district: 'Colombo',
+      eventTitle: selectedPackage ? `${selectedPackage.title} Celebration` : undefined,
+      eventType: selectedPackage ? packageTypeMap[selectedPackage.category] ?? 'Other' : 'Wedding',
+      district: selectedPackage?.location && sriLankaDistricts.includes(selectedPackage.location as typeof sriLankaDistricts[number])
+        ? selectedPackage.location
+        : 'Colombo',
+      venue: selectedPackage?.venue,
       status: 'Planning',
       guestCount: 100,
-      budget: 500000,
+      budget: selectedPackage?.price ?? 500000,
+      description: selectedPackage?.description,
+      theme: selectedPackage?.category,
+      notes: selectedPackage?.inclusions?.join(', '),
     },
   })
 
@@ -72,8 +98,9 @@ export function AddEventPage() {
 
     try {
       await dispatch(addEvent(formData)).unwrap()
+      sessionStorage.removeItem('celebratelk.selectedPackage')
       toast.success('Event created successfully')
-      navigate('/events')
+      navigate('/vendors')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create event')
     }
@@ -83,11 +110,27 @@ export function AddEventPage() {
     <section className="section-shell py-8">
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <p className="text-sm font-semibold text-gold-700 dark:text-gold-300">Create event</p>
-        <h1 className="font-display text-4xl font-bold">Add a new celebration</h1>
+        <h1 className="font-display text-4xl font-bold">{selectedPackage ? 'Customize your package event' : 'Add a new celebration'}</h1>
         <p className="mt-2 max-w-2xl text-sm text-charcoal-800/68 dark:text-ivory-100/68">
-          Capture the essentials, upload an event image, and start tracking vendors, guests and budget immediately.
+          {selectedPackage
+            ? 'Your selected package is ready. Customize details, create the event, then book vendors.'
+            : 'Capture the essentials, upload an event image, and start tracking vendors, guests and budget immediately.'}
         </p>
       </motion.div>
+
+      {selectedPackage && (
+        <div className="mt-6 rounded-2xl border border-[#ead8f5] bg-[#fbf3ff] p-5 shadow-soft">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <img src={selectedPackage.image} alt={selectedPackage.title} className="h-28 w-full rounded-xl object-cover md:w-40" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-[#a855f7]">Selected Package</p>
+              <h2 className="mt-1 text-2xl font-bold">{selectedPackage.title}</h2>
+              <p className="mt-1 text-sm text-charcoal-800/68">{selectedPackage.venue}, {selectedPackage.location}</p>
+              <p className="mt-2 text-lg font-bold text-[#a855f7]">Suggested budget: LKR {selectedPackage.price.toLocaleString('en-LK')}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-7 grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="glass-panel grid gap-5 rounded-lg p-6 md:grid-cols-2">

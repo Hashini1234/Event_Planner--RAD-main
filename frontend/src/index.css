@@ -50,4 +50,8 @@ textarea {
   .field-dark {
     @apply rounded-md border border-white/10 bg-charcoal-900 px-3 py-3 text-sm text-ivory-50 outline-none transition focus:border-gold-300;
   }
+
+  .market-field {
+    @apply w-full rounded-xl border border-[#ded6ea] bg-white px-4 py-3 text-sm font-semibold text-[#21142f] outline-none transition placeholder:text-[#8d8498] focus:border-[#7c3aed] focus:ring-4 focus:ring-[#7c3aed]/10;
+  }
 }

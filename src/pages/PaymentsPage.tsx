@@ -1,8 +1,9 @@
-import { Bell, CalendarX, CreditCard, MessageSquare, ReceiptText, ShieldCheck, Star, X } from 'lucide-react'
+import { Bell, CalendarX, CreditCard, MessageSquare, ReceiptText, ShieldCheck, Star, Store, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import toast from 'react-hot-toast'
+import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
-import { cancelBooking, createVendorReview, fetchMyBookings, fetchNotifications, markNotificationRead } from '../services/customerService'
+import { cancelBooking, createPaymentIntent, createVendorReview, fetchMyBookings, fetchNotifications, markNotificationRead } from '../services/customerService'
 import type { Booking, NotificationItem } from '../types/domain'
 import { formatLKR } from '../utils/currency'
 
@@ -50,6 +51,23 @@ export function PaymentsPage() {
     }
   }
 
+  const handlePayment = async (booking: Booking) => {
+    const id = bookingId(booking)
+    if (!id || booking.status !== 'accepted') return
+    try {
+      await createPaymentIntent({
+        bookingId: id,
+        vendor: bookingVendorId(booking),
+        amount: bookingAmount(booking),
+      })
+      toast.success('Payment started for confirmed booking')
+      await load()
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Could not start payment'
+      toast.error(message)
+    }
+  }
+
   const handleRead = async (item: NotificationItem) => {
     const id = item._id ?? item.id
     if (!id) return
@@ -62,88 +80,126 @@ export function PaymentsPage() {
   }
 
   return (
-    <section className="px-4 py-8 text-ivory-50 sm:px-6 lg:px-8">
-      <div className="mb-7 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-sm font-semibold text-gold-300">My Vendor Bookings</p>
-          <h1 className="font-display text-4xl font-bold">Track vendor booking requests</h1>
-          <p className="mt-2 text-sm text-ivory-50/62">Review package requests, booking statuses, cancellation options, and post-event reviews.</p>
-        </div>
-        <Button icon={<CreditCard size={18} />}>Payment center</Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard icon={<ReceiptText />} label="Pending amount" value={formatLKR(pendingAmount)} />
-        <SummaryCard icon={<ShieldCheck />} label="Active bookings" value={`${bookings.filter((item) => item.status !== 'cancelled').length}`} />
-        <SummaryCard icon={<Bell />} label="Unread notifications" value={`${notifications.filter((item) => !item.readAt).length}`} />
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-lg border border-white/10 bg-white/6 p-6 shadow-soft">
-          <h2 className="text-xl font-bold">My bookings</h2>
-          {loading ? (
-            <div className="mt-4 rounded-md bg-white/6 p-6 text-center text-sm text-ivory-50/58">Loading bookings...</div>
-          ) : bookings.length === 0 ? (
-            <div className="mt-4 rounded-md border border-white/10 bg-charcoal-900/60 p-8 text-center">
-              <CalendarX className="mx-auto text-gold-300" size={34} />
-              <h3 className="mt-3 text-xl font-bold">No vendor bookings yet</h3>
-              <p className="mt-2 text-sm text-ivory-50/58">Book a vendor from the marketplace to start tracking requests here.</p>
+    <section className="px-4 py-5 text-[#171124] sm:px-6 lg:px-7">
+      <div className="mx-auto max-w-[1500px] space-y-5">
+        <div className="rounded-2xl border border-[#ece6f5] bg-white p-6 shadow-[0_12px_35px_rgba(31,17,50,0.07)] lg:p-8">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-[#7c3aed]">My Vendor Bookings</p>
+              <h1 className="mt-2 text-4xl font-bold tracking-tight">Track vendor booking requests</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6b6078]">
+                Review booking status, cancel pending requests, pay after admin confirmation, and submit post-event reviews.
+              </p>
             </div>
-          ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="text-ivory-50/58">
-                  <tr>
-                    <th className="py-3">Vendor Name</th>
-                    <th>Event Name</th>
-                    <th>Package</th>
-                    <th>Price</th>
-                    <th>Event Date</th>
-                    <th>Booking Date</th>
-                    <th>Status</th>
-                    <th className="text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map((booking) => (
-                    <tr key={bookingId(booking)} className="border-t border-white/10 align-middle">
-                      <td className="py-3 font-medium">{bookingVendor(booking)}</td>
-                      <td>{bookingEvent(booking)}</td>
-                      <td>{booking.packageName ?? booking.packageTitle ?? 'Standard package'}</td>
-                      <td>{formatLKR(bookingAmount(booking))}</td>
-                      <td>{formatDate(booking.eventDate ?? booking.date)}</td>
-                      <td>{formatDate(booking.createdAt)}</td>
-                      <td><StatusBadge status={booking.status} /></td>
-                      <td className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="secondary" className="min-h-9 border-white/10 bg-white/8 px-3 py-1 text-ivory-50" disabled={booking.status !== 'pending'} icon={<CalendarX size={15} />} onClick={() => setCancelTarget(booking)}>
-                            Cancel
-                          </Button>
-                          <Button variant="secondary" className="min-h-9 border-white/10 bg-white/8 px-3 py-1 text-ivory-50" disabled={booking.status !== 'completed'} icon={<MessageSquare size={15} />} onClick={() => setReviewTarget(booking)}>
-                            Review
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <aside className="rounded-lg border border-white/10 bg-white/6 p-6 shadow-soft">
-          <h2 className="text-xl font-bold">Notifications</h2>
-          <div className="mt-4 grid gap-3">
-            {notifications.length === 0 && <p className="text-sm text-ivory-50/58">No notifications yet.</p>}
-            {notifications.map((item) => (
-              <button key={item._id ?? item.id} onClick={() => void handleRead(item)} className={`rounded-md border p-4 text-left transition ${item.readAt ? 'border-white/8 bg-white/4 text-ivory-50/58' : 'border-gold-300/30 bg-gold-300/10'}`}>
-                <p className="font-bold">{item.title}</p>
-                <p className="mt-1 text-sm leading-6">{item.message}</p>
-              </button>
-            ))}
+            <Link to="/vendors">
+              <Button icon={<Store size={18} />} className="rounded-lg bg-[#6d28d9] px-5 text-white hover:bg-[#5b21b6]">
+                Find Vendors
+              </Button>
+            </Link>
           </div>
-        </aside>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <SummaryCard icon={<ReceiptText />} label="Pending amount" value={formatLKR(pendingAmount)} tone="purple" />
+          <SummaryCard icon={<ShieldCheck />} label="Active bookings" value={`${bookings.filter((item) => item.status !== 'cancelled').length}`} tone="green" />
+          <SummaryCard icon={<Bell />} label="Unread notifications" value={`${notifications.filter((item) => !item.readAt).length}`} tone="gold" />
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <div className="rounded-2xl border border-[#ece6f5] bg-white p-6 shadow-[0_12px_35px_rgba(31,17,50,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold">My bookings</h2>
+                <p className="mt-1 text-sm text-[#6b6078]">Only your vendor booking requests are shown here.</p>
+              </div>
+              <CreditCard className="text-[#7c3aed]" size={24} />
+            </div>
+
+            {loading ? (
+              <div className="mt-5 rounded-xl bg-[#faf8ff] p-8 text-center text-sm font-semibold text-[#6b6078]">Loading bookings...</div>
+            ) : bookings.length === 0 ? (
+              <div className="mt-5 rounded-xl border border-[#ece6f5] bg-[#faf8ff] p-10 text-center">
+                <CalendarX className="mx-auto text-[#7c3aed]" size={38} />
+                <h3 className="mt-3 text-xl font-bold">No vendor bookings yet</h3>
+                <p className="mt-2 text-sm text-[#6b6078]">Book a vendor from the marketplace to start tracking requests here.</p>
+                <Link to="/vendors" className="mt-5 inline-flex">
+                  <Button icon={<Store size={17} />} className="rounded-lg bg-[#6d28d9] text-white hover:bg-[#5b21b6]">
+                    Browse Vendors
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full min-w-[980px] text-left text-sm">
+                  <thead className="bg-[#faf8ff] text-xs uppercase tracking-wide text-[#6b6078]">
+                    <tr>
+                      <th className="rounded-l-xl px-4 py-3">Vendor Name</th>
+                      <th className="px-4 py-3">Event Name</th>
+                      <th className="px-4 py-3">Package</th>
+                      <th className="px-4 py-3">Price</th>
+                      <th className="px-4 py-3">Event Date</th>
+                      <th className="px-4 py-3">Booking Date</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="rounded-r-xl px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map((booking) => (
+                      <tr key={bookingId(booking)} className="border-b border-[#f0ebf6] align-middle last:border-b-0">
+                        <td className="px-4 py-4 font-bold text-[#171124]">{bookingVendor(booking)}</td>
+                        <td className="px-4 py-4 text-[#4b3a5d]">{bookingEvent(booking)}</td>
+                        <td className="px-4 py-4 text-[#4b3a5d]">{booking.packageName ?? booking.packageTitle ?? 'Standard package'}</td>
+                        <td className="px-4 py-4 font-bold">{formatLKR(bookingAmount(booking))}</td>
+                        <td className="px-4 py-4 text-[#4b3a5d]">{formatDate(booking.eventDate ?? booking.date)}</td>
+                        <td className="px-4 py-4 text-[#4b3a5d]">{formatDate(booking.createdAt)}</td>
+                        <td className="px-4 py-4"><StatusBadge status={booking.status} /></td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="secondary" className="min-h-9 rounded-lg border-[#e7dff0] bg-white px-3 py-1 text-[#4b3a5d]" disabled={booking.status !== 'pending'} icon={<CalendarX size={15} />} onClick={() => setCancelTarget(booking)}>
+                              Cancel
+                            </Button>
+                            <Button className="min-h-9 rounded-lg bg-[#6d28d9] px-3 py-1 text-white hover:bg-[#5b21b6]" disabled={booking.status !== 'accepted'} icon={<CreditCard size={15} />} onClick={() => void handlePayment(booking)}>
+                              Pay
+                            </Button>
+                            <Button variant="secondary" className="min-h-9 rounded-lg border-[#e7dff0] bg-white px-3 py-1 text-[#4b3a5d]" disabled={booking.status !== 'completed'} icon={<MessageSquare size={15} />} onClick={() => setReviewTarget(booking)}>
+                              Review
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <aside className="rounded-2xl border border-[#ece6f5] bg-white p-6 shadow-[0_12px_35px_rgba(31,17,50,0.06)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Notifications</h2>
+              <Bell className="text-[#7c3aed]" size={22} />
+            </div>
+            <div className="mt-5 grid gap-3">
+              {notifications.length === 0 && (
+                <div className="rounded-xl bg-[#faf8ff] p-5 text-sm font-medium text-[#6b6078]">No notifications yet.</div>
+              )}
+              {notifications.map((item) => (
+                <button
+                  key={item._id ?? item.id}
+                  onClick={() => void handleRead(item)}
+                  className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${
+                    item.readAt
+                      ? 'border-[#ece6f5] bg-white text-[#6b6078]'
+                      : 'border-[#d8c4ff] bg-[#faf8ff] text-[#171124] shadow-sm'
+                  }`}
+                >
+                  <p className="font-bold">{item.title}</p>
+                  <p className="mt-1 text-sm leading-6">{item.message}</p>
+                </button>
+              ))}
+            </div>
+          </aside>
+        </div>
       </div>
 
       {cancelTarget && (
@@ -177,23 +233,23 @@ function ReviewModal({ booking, onClose, onSaved }: { booking: Booking; onClose:
     }
   }
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-      <form onSubmit={submit} className="w-full max-w-xl rounded-lg border border-white/10 bg-charcoal-900 p-6 shadow-luxury">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#171124]/70 p-4 backdrop-blur-sm">
+      <form onSubmit={submit} className="w-full max-w-xl rounded-2xl bg-white p-6 text-[#171124] shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-gold-300">Post event review</p>
-            <h2 className="font-display text-3xl font-bold">{bookingVendor(booking)}</h2>
+            <p className="text-sm font-bold text-[#7c3aed]">Post event review</p>
+            <h2 className="mt-1 text-3xl font-bold">{bookingVendor(booking)}</h2>
           </div>
-          <button type="button" className="grid h-10 w-10 place-items-center rounded-md hover:bg-white/10" onClick={onClose} aria-label="Close"><X size={20} /></button>
+          <button type="button" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-[#faf8ff]" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
-        <label className="mt-5 grid gap-2 text-sm font-medium text-ivory-50/76">
+        <label className="mt-5 grid gap-2 text-sm font-semibold text-[#554a63]">
           Rating
-          <select value={rating} onChange={(item) => setRating(Number(item.target.value))} className="field-dark">
+          <select value={rating} onChange={(item) => setRating(Number(item.target.value))} className="market-field">
             {[5, 4, 3, 2, 1].map((item) => <option key={item} value={item}>{item} Stars</option>)}
           </select>
         </label>
-        <textarea value={comment} onChange={(item) => setComment(item.target.value)} rows={4} className="field-dark mt-4" placeholder="Share your experience with this vendor" />
-        <Button className="mt-5 w-full" icon={<Star size={18} />}>Submit Review</Button>
+        <textarea value={comment} onChange={(item) => setComment(item.target.value)} rows={4} className="market-field mt-4 min-h-28" placeholder="Share your experience with this vendor" />
+        <Button className="mt-5 w-full rounded-lg bg-[#6d28d9] text-white hover:bg-[#5b21b6]" icon={<Star size={18} />}>Submit Review</Button>
       </form>
     </div>
   )
@@ -201,34 +257,45 @@ function ReviewModal({ booking, onClose, onSaved }: { booking: Booking; onClose:
 
 function ConfirmModal({ title, message, confirmLabel, onCancel, onConfirm }: { title: string; message: string; confirmLabel: string; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4">
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-charcoal-900 p-6 shadow-luxury">
-        <h2 className="font-display text-2xl font-bold">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-ivory-50/62">{message}</p>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#171124]/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 text-[#171124] shadow-2xl">
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-[#6b6078]">{message}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" className="border-white/10 bg-white/8 text-ivory-50" onClick={onCancel}>Keep Booking</Button>
-          <Button onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant="secondary" className="rounded-lg border-[#e7dff0] bg-white text-[#4b3a5d]" onClick={onCancel}>Keep Booking</Button>
+          <Button className="rounded-lg bg-[#6d28d9] text-white hover:bg-[#5b21b6]" onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </div>
     </div>
   )
 }
 
-function SummaryCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <div className="rounded-lg border border-white/10 bg-white/6 p-5 shadow-soft"><span className="text-gold-300">{icon}</span><p className="mt-4 text-sm text-ivory-50/62">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></div>
+function SummaryCard({ icon, label, value, tone }: { icon: ReactNode; label: string; value: string; tone: 'purple' | 'green' | 'gold' }) {
+  const styles = {
+    purple: 'bg-[#f1e7ff] text-[#6d28d9]',
+    green: 'bg-[#dcfce7] text-[#15803d]',
+    gold: 'bg-[#fff7df] text-[#b45309]',
+  }
+  return (
+    <div className="rounded-2xl border border-[#ece6f5] bg-white p-5 shadow-[0_12px_35px_rgba(31,17,50,0.06)]">
+      <span className={`grid h-12 w-12 place-items-center rounded-xl ${styles[tone]}`}>{icon}</span>
+      <p className="mt-4 text-sm font-semibold text-[#6b6078]">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
+    </div>
+  )
 }
 
 function StatusBadge({ status }: { status: Booking['status'] }) {
   const styles: Record<string, string> = {
-    pending: 'bg-gold-300/14 text-gold-300',
-    accepted: 'bg-emerald-400/14 text-emerald-200',
-    rejected: 'bg-blush-700/18 text-blush-200',
-    cancelled: 'bg-white/10 text-ivory-50/58',
-    completed: 'bg-sky-400/14 text-sky-200',
-    paid: 'bg-emerald-400/14 text-emerald-200',
-    refunded: 'bg-white/10 text-ivory-50/58',
+    pending: 'bg-[#fff7df] text-[#b45309]',
+    accepted: 'bg-[#dcfce7] text-[#15803d]',
+    rejected: 'bg-[#ffe4e6] text-[#be123c]',
+    cancelled: 'bg-[#f1f5f9] text-[#64748b]',
+    completed: 'bg-[#dbeafe] text-[#1d4ed8]',
+    paid: 'bg-[#dcfce7] text-[#15803d]',
+    refunded: 'bg-[#f1f5f9] text-[#64748b]',
   }
-  return <span className={`rounded-md px-2 py-1 text-xs font-bold capitalize ${styles[status] ?? styles.pending}`}>{status}</span>
+  return <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${styles[status] ?? styles.pending}`}>{status}</span>
 }
 
 function bookingId(booking: Booking) { return booking._id ?? booking.id }
@@ -241,6 +308,11 @@ function bookingEvent(booking: Booking) {
   return event?.eventTitle ?? booking.eventTitle ?? 'Event'
 }
 function bookingAmount(booking: Booking) { return Number(booking.packagePrice ?? booking.amount ?? 0) }
+function bookingVendorId(booking: Booking) {
+  if (typeof booking.vendorId === 'string') return booking.vendorId
+  if (booking.vendorId && typeof booking.vendorId === 'object') return booking.vendorId._id ?? booking.vendorId.id
+  return typeof booking.vendor === 'object' ? booking.vendor._id ?? booking.vendor.id : undefined
+}
 function formatDate(value?: string) {
   if (!value) return '-'
   const date = new Date(value)

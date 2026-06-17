@@ -130,6 +130,22 @@ export interface Booking {
   updatedAt?: string
 }
 
+export interface EventPackage {
+  id?: string
+  _id?: string
+  title: string
+  category: 'Birthday' | 'Wedding' | 'Festival' | 'Meetings' | 'House Warming' | 'Baby Shower' | 'Other'
+  venue: string
+  location: string
+  price: number
+  description?: string
+  image?: string
+  inclusions?: string[]
+  active?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Review {
   id?: string
   _id?: string

@@ -1,24 +1,19 @@
 import {
   Bell,
-  Bot,
   CalendarDays,
   ChevronDown,
   CircleHelp,
   CreditCard,
-  Images,
   LayoutDashboard,
   LogOut,
   Menu,
   Moon,
   Plus,
   Search,
-  Settings,
   Star,
   Store,
   Sun,
   UserRound,
-  Users,
-  WalletCards,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -28,14 +23,10 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux'
 
 const customerLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/events', label: 'Events', icon: CalendarDays },
-  { to: '/ai-planner', label: 'AI Planner', icon: Bot },
-  { to: '/vendors', label: 'Vendors', icon: Store },
+  { to: '/events/new', label: 'Create Event', icon: Plus },
+  { to: '/vendors', label: 'Find Vendors', icon: Store },
   { to: '/bookings', label: 'My Bookings', icon: CreditCard },
-  { to: '/budget', label: 'Budget', icon: WalletCards },
-  { to: '/guests', label: 'Guests', icon: Users },
   { to: '/payments', label: 'Payments', icon: CreditCard },
-  { to: '/gallery', label: 'Inspiration Gallery', icon: Images },
 ]
 
 const vendorLinks = [
@@ -52,7 +43,6 @@ const adminLinks = [
 const accountLinks = [
   { label: 'Reviews', icon: Star },
   { label: 'Profile', icon: UserRound },
-  { label: 'Settings', icon: Settings },
 ]
 
 export function AppLayout() {

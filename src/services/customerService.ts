@@ -48,6 +48,11 @@ export async function cancelBooking(id: string) {
   return data.data as Booking
 }
 
+export async function createPaymentIntent(payload: { bookingId: string; vendor?: string; amount: number }) {
+  const { data } = await api.post('/payments/intent', payload)
+  return data.data as { payment: unknown; intent: { id: string; client_secret?: string } }
+}
+
 export async function fetchVendorReviews(vendorId: string) {
   const { data } = await api.get(`/reviews/vendor/${vendorId}`)
   return data.data as Review[]

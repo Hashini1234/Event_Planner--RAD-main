@@ -12,16 +12,22 @@ import {
   createEvent,
   createGuest,
   createPayment,
+  createEventPackage,
   createReview,
   createVendor,
+  deleteEventPackage,
+  deleteVendor,
   deleteBudgetItem,
   deleteEvent,
   deleteGuest,
   getVendor,
+  getEventPackage,
   getEvent,
   listBudgetItems,
   listBudgetSummary,
   listEvents,
+  listEventPackages,
+  listBookings,
   listMyEvents,
   listGuests,
   listMyBookings,
@@ -31,6 +37,8 @@ import {
   markNotificationRead,
   recommendVendors,
   updateEvent,
+  updateEventPackage,
+  updateVendor,
   updateBudgetItem,
   updateBookingStatus,
   updateGuest,
@@ -71,9 +79,17 @@ router.get('/vendors', asyncHandler(listVendors))
 router.get('/vendors/:id', asyncHandler(getVendor))
 router.get('/vendors/:id/reviews', asyncHandler(listVendorReviews))
 router.post('/vendors', authenticate, authorize('vendor', 'admin'), upload.array('images', 8), asyncHandler(createVendor))
+router.put('/vendors/:id', authenticate, authorize('admin'), asyncHandler(updateVendor))
+router.delete('/vendors/:id', authenticate, authorize('admin'), asyncHandler(deleteVendor))
 router.patch('/vendors/:id/approve', authenticate, authorize('admin'), asyncHandler(approveVendor))
 
-router.get('/events', authenticate, asyncHandler(listEvents))
+router.get('/event-packages', asyncHandler(listEventPackages))
+router.get('/event-packages/:id', asyncHandler(getEventPackage))
+router.post('/event-packages', authenticate, authorize('admin'), asyncHandler(createEventPackage))
+router.put('/event-packages/:id', authenticate, authorize('admin'), asyncHandler(updateEventPackage))
+router.delete('/event-packages/:id', authenticate, authorize('admin'), asyncHandler(deleteEventPackage))
+
+router.get('/events', authenticate, authorize('admin'), asyncHandler(listEvents))
 router.get('/events/user/my-events', authenticate, authorize('customer', 'admin'), asyncHandler(listMyEvents))
 router.get('/events/:id', authenticate, asyncHandler(getEvent))
 router.post('/events', authenticate, authorize('customer'), upload.single('eventImage'), eventRules, validateRequest, asyncHandler(createEvent))
@@ -88,6 +104,7 @@ router.put('/budget-items/:id', authenticate, authorize('customer', 'admin'), as
 router.delete('/budget-items/:id', authenticate, authorize('customer', 'admin'), asyncHandler(deleteBudgetItem))
 
 router.post('/bookings', authenticate, authorize('customer', 'admin'), asyncHandler(createBooking))
+router.get('/bookings', authenticate, authorize('admin'), asyncHandler(listBookings))
 router.get('/bookings/my', authenticate, authorize('customer', 'admin'), asyncHandler(listMyBookings))
 router.patch('/bookings/:id/cancel', authenticate, authorize('customer', 'admin'), asyncHandler(cancelBooking))
 router.patch('/bookings/:id/status', authenticate, authorize('vendor', 'admin'), asyncHandler(updateBookingStatus))
